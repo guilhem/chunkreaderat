@@ -41,9 +41,7 @@ func NewChunkReaderAt(rd ReaderAtSizer, chunkSize int64, maxMemoryMB int) (io.Re
 	// }
 
 	config := bigcache.DefaultConfig(evictionTime)
-	config.MaxEntrySize = int(chunkSize)
 	config.HardMaxCacheSize = maxMemoryMB
-	config.Verbose = false
 
 	bigcacheClient, err := bigcache.NewBigCache(config)
 	if err != nil {
