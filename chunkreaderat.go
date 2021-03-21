@@ -7,7 +7,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/allegro/bigcache"
+	"github.com/allegro/bigcache/v2"
 	"github.com/eko/gocache/cache"
 	"github.com/eko/gocache/store"
 )
@@ -42,6 +42,7 @@ func NewChunkReaderAt(rd ReaderAtSizer, chunkSize int64, maxMemoryMB int) (io.Re
 
 	config := bigcache.DefaultConfig(evictionTime)
 	config.HardMaxCacheSize = maxMemoryMB
+	config.MaxEntrySize = int(chunkSize)
 
 	bigcacheClient, err := bigcache.NewBigCache(config)
 	if err != nil {
@@ -95,7 +96,7 @@ func (r *ChunkReaderAt) ReadAt(b []byte, offset int64) (int, error) {
 
 	ret := make([]byte, 0, len(b))
 
-	for readedData <= len(b) {
+	for readedData < len(b) {
 		loopb := make([]byte, len(b)-readedData)
 
 		bufI, err := r.cache.Get(currentChunk)
