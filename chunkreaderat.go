@@ -34,12 +34,14 @@ var (
 func NewChunkReaderAt(rd ReaderAtSizer, chunkSize int64, maxMemoryMB int) (io.ReaderAt, error) {
 	size := rd.Size()
 
+	numChunk := size / chunkSize
+
 	config := bigcache.DefaultConfig(evictionTime)
 	config.HardMaxCacheSize = maxMemoryMB
 	config.MaxEntrySize = int(chunkSize)
 
 	// find closest power of 2 for big chunk
-	if size/chunkSize <= 512 {
+	if numChunk <= 512 && numChunk > 0 {
 		config.Shards = int(math.Pow(2, math.Ceil(math.Log2(float64(size/chunkSize)))))
 	}
 
