@@ -60,14 +60,14 @@ func TestChunkReaderAt_ReadAtBig(t *testing.T) {
 		memory  int
 		wanterr interface{}
 	}{
-		{mem100M, 0, 10, 10, 10, nil},
-		{mem100M, (mem100M) - 9, 10, 10, 10, io.EOF},
+		{mem100M, 0, 10, 1024, 10, nil},
+		{mem100M, (mem100M) - 9, 10, 1024, 10, io.EOF},
 		{mem100M, 1, 9, 10, 10, nil},
-		{mem100M, (mem100M) + 1, 10, 10, 10, io.EOF},
+		{mem100M, (mem100M) + 1, 10, 1024, 10, io.EOF},
 		{mem100M, 0, 0, 1, 10, nil},
-		{mem100M, -1, 0, 10, 10, "bytes.Reader.ReadAt: negative offset"},
+		{mem100M, -1, 0, 1024, 10, "bytes.Reader.ReadAt: negative offset"},
 		/* #nosec */
-		{mem100M, rand.Int63n(mem100M - 100), 100, 10, 10, nil},
+		{mem100M, rand.Int63n(mem100M - 100), 100, 1024, 10, nil},
 		/* #nosec */
 		{mem100M, rand.Int63n(mem100M - mem1M), int(mem1M), mem1M, 10, nil},
 	}

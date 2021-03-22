@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"time"
 
 	"github.com/allegro/bigcache/v2"
@@ -33,16 +34,14 @@ var (
 func NewChunkReaderAt(rd ReaderAtSizer, chunkSize int64, maxMemoryMB int) (io.ReaderAt, error) {
 	size := rd.Size()
 
-	// Not used for now
-	// numChunk := size / chunkSize
-
-	// if (size % chunkSize) != 0 {
-	// 	numChunk++
-	// }
-
 	config := bigcache.DefaultConfig(evictionTime)
 	config.HardMaxCacheSize = maxMemoryMB
 	config.MaxEntrySize = int(chunkSize)
+
+	// find closest power of 2 for big chunk
+	if size/chunkSize <= 512 {
+		config.Shards = int(math.Pow(2, math.Ceil(math.Log2(float64(size/chunkSize)))))
+	}
 
 	bigcacheClient, err := bigcache.NewBigCache(config)
 	if err != nil {
@@ -52,14 +51,22 @@ func NewChunkReaderAt(rd ReaderAtSizer, chunkSize int64, maxMemoryMB int) (io.Re
 	bigcacheStore := store.NewBigcache(bigcacheClient, nil)
 
 	loadFunction := func(key interface{}) (interface{}, error) {
-		buf := make([]byte, chunkSize)
 		numChunk, ok := key.(int64)
+		offset := numChunk * chunkSize
+		buflen := chunkSize
+
+		var buf []byte
+		if numChunk == size/chunkSize {
+			buf = make([]byte, size%chunkSize)
+		} else {
+			buf = make([]byte, buflen)
+		}
 
 		if !ok {
 			return nil, errAssertion
 		}
 
-		n, err := rd.ReadAt(buf, numChunk*chunkSize)
+		n, err := rd.ReadAt(buf, offset)
 		if err != nil && !errors.Is(err, io.EOF) {
 			return nil, fmt.Errorf("can't read at: %w", err)
 		}
@@ -96,7 +103,7 @@ func (r *ChunkReaderAt) ReadAt(b []byte, offset int64) (int, error) {
 
 	ret := make([]byte, 0, len(b))
 
-	for readedData < len(b) {
+	for currentChunk <= r.size/r.chunkSize {
 		loopb := make([]byte, len(b)-readedData)
 
 		bufI, err := r.cache.Get(currentChunk)
@@ -121,6 +128,10 @@ func (r *ChunkReaderAt) ReadAt(b []byte, offset int64) (int, error) {
 		}
 
 		ret = append(ret, loopb[:n]...)
+
+		if readedData == len(b) {
+			break
+		}
 
 		currentChunk++
 
