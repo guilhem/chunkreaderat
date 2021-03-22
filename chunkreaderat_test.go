@@ -31,7 +31,7 @@ func TestChunkReaderAt_ReadAt(t *testing.T) {
 
 	for i, tt := range tests {
 		buf := bytes.NewReader([]byte("0123456789"))
-		r, _ := chunkreaderat.NewChunkReaderAt(buf, 1, 10)
+		r, _ := chunkreaderat.NewChunkReaderAt(buf, 1, chunkreaderat.NewSimpleStore())
 		b := make([]byte, tt.n)
 		rn, err := r.ReadAt(b, tt.off)
 		got := string(b[:rn])
@@ -57,19 +57,19 @@ func TestChunkReaderAt_ReadAtBig(t *testing.T) {
 		off     int64
 		n       int
 		chunk   int64
-		memory  int
 		wanterr interface{}
 	}{
-		{mem100M, 0, 10, 1024, 10, nil},
-		{mem100M, (mem100M) - 9, 10, 1024, 10, io.EOF},
-		{mem100M, 1, 9, 10, 10, nil},
-		{mem100M, (mem100M) + 1, 10, 1024, 10, io.EOF},
-		{mem100M, 0, 0, 1, 10, nil},
-		{mem100M, -1, 0, 1024, 10, "bytes.Reader.ReadAt: negative offset"},
+		{mem100M, 0, 10, 1024, nil},
+		{mem100M, 0, 10, 1024, nil},
+		{mem100M, (mem100M) - 9, 10, 1024, io.EOF},
+		{mem100M, 1, 9, 10, nil},
+		{mem100M, (mem100M) + 1, 10, 1024, io.EOF},
+		{mem100M, 0, 0, 1, nil},
+		{mem100M, -1, 0, 1024, "bytes.Reader.ReadAt: negative offset"},
 		/* #nosec */
-		{mem100M, rand.Int63n(mem100M - 100), 100, 1024, 10, nil},
+		{mem100M, rand.Int63n(mem100M - 100), 100, 1024, nil},
 		/* #nosec */
-		{mem100M, rand.Int63n(mem100M - mem1M), int(mem1M), mem1M, 10, nil},
+		{mem100M, rand.Int63n(mem100M - mem1M), int(mem1M), mem1M, nil},
 	}
 
 	for i, tt := range tests {
@@ -78,7 +78,7 @@ func TestChunkReaderAt_ReadAtBig(t *testing.T) {
 		rand.Read(d)
 
 		buf := bytes.NewReader(d)
-		r, _ := chunkreaderat.NewChunkReaderAt(buf, tt.chunk, tt.memory)
+		r, _ := chunkreaderat.NewChunkReaderAt(buf, tt.chunk, chunkreaderat.NewSimpleStore())
 		b := make([]byte, tt.n)
 		_, err := r.ReadAt(b, tt.off)
 

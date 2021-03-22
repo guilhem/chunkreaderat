@@ -5,10 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math"
 	"time"
 
-	"github.com/allegro/bigcache/v2"
 	"github.com/eko/gocache/cache"
 	"github.com/eko/gocache/store"
 )
@@ -31,26 +29,24 @@ var (
 	errNegativeOffset = errors.New("bytes.Reader.ReadAt: negative offset")
 )
 
-func NewChunkReaderAt(rd ReaderAtSizer, chunkSize int64, maxMemoryMB int) (io.ReaderAt, error) {
+func NewChunkReaderAt(rd ReaderAtSizer, chunkSize int64, cacheStore store.StoreInterface) (io.ReaderAt, error) {
 	size := rd.Size()
 
-	numChunk := size / chunkSize
+	// numChunk := size / chunkSize
 
-	config := bigcache.DefaultConfig(evictionTime)
-	config.HardMaxCacheSize = maxMemoryMB
-	config.MaxEntrySize = int(chunkSize)
+	// config := bigcache.DefaultConfig(evictionTime)
+	// config.HardMaxCacheSize = maxMemoryMB
+	// config.MaxEntriesInWindow = int(numChunk)
+	// config.MaxEntrySize = int(chunkSize)
+	// // find closest power of 2 of maxnum
+	// config.Shards = int(math.Pow(2, math.Ceil(math.Log2(float64(maxnum)))))
 
-	// find closest power of 2 for big chunk
-	if numChunk <= 512 && numChunk > 0 {
-		config.Shards = int(math.Pow(2, math.Ceil(math.Log2(float64(size/chunkSize)))))
-	}
+	// bigcacheClient, err := bigcache.NewBigCache(config)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("can't create BigCache client: %w", err)
+	// }
 
-	bigcacheClient, err := bigcache.NewBigCache(config)
-	if err != nil {
-		return nil, fmt.Errorf("can't create BigCache client: %w", err)
-	}
-
-	bigcacheStore := store.NewBigcache(bigcacheClient, nil)
+	// bigcacheStore := store.NewBigcache(bigcacheClient, nil)
 
 	loadFunction := func(key interface{}) (interface{}, error) {
 		numChunk, ok := key.(int64)
@@ -79,7 +75,7 @@ func NewChunkReaderAt(rd ReaderAtSizer, chunkSize int64, maxMemoryMB int) (io.Re
 	// Initialize loadable cache
 	cacheManager := cache.NewLoadable(
 		loadFunction,
-		cache.New(bigcacheStore),
+		cache.New(cacheStore),
 	)
 
 	return &ChunkReaderAt{
