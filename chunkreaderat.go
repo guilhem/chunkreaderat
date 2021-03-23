@@ -97,28 +97,28 @@ func (r *ChunkReaderAt) ReadAt(b []byte, offset int64) (int, error) {
 	currentChunk := offset / r.chunkSize
 	currentOffset := offset % r.chunkSize
 
-	readedData := 0
+	readData := 0
 
 	ret := make([]byte, 0, len(b))
 
 	for currentChunk <= r.size/r.chunkSize {
-		loopb := make([]byte, len(b)-readedData)
+		loopb := make([]byte, len(b)-readData)
 
 		bufI, err := r.cache.Get(currentChunk)
 		if err != nil {
-			return readedData, fmt.Errorf("can't get chunk %d: %w", currentChunk, err)
+			return readData, fmt.Errorf("can't get chunk %d: %w", currentChunk, err)
 		}
 
 		buf, ok := bufI.([]byte)
 		if !ok {
-			return readedData, errAssertion
+			return readData, errAssertion
 		}
 
 		n, err := bytes.NewReader(buf).ReadAt(loopb, currentOffset)
-		readedData += n
+		readData += n
 
 		if err != nil && !errors.Is(err, io.EOF) {
-			return readedData, fmt.Errorf("can't read at: %w", err)
+			return readData, fmt.Errorf("can't read at: %w", err)
 		}
 
 		if n == 0 {
@@ -127,7 +127,7 @@ func (r *ChunkReaderAt) ReadAt(b []byte, offset int64) (int, error) {
 
 		ret = append(ret, loopb[:n]...)
 
-		if readedData == len(b) {
+		if readData == len(b) {
 			break
 		}
 
@@ -136,7 +136,7 @@ func (r *ChunkReaderAt) ReadAt(b []byte, offset int64) (int, error) {
 		currentOffset = 0
 	}
 
-	n := copy(b, ret[:readedData])
+	n := copy(b, ret[:readData])
 	if n < len(b) {
 		return n, io.EOF
 	}
