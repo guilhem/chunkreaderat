@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"time"
 
 	"github.com/eko/gocache/cache"
 	"github.com/eko/gocache/store"
@@ -22,8 +21,6 @@ type ChunkReaderAt struct {
 	size      int64
 }
 
-const evictionTime = 5 * time.Minute
-
 var (
 	errAssertion      = errors.New("assertion error")
 	errNegativeOffset = errors.New("bytes.Reader.ReadAt: negative offset")
@@ -31,22 +28,6 @@ var (
 
 func NewChunkReaderAt(rd ReaderAtSizer, chunkSize int64, cacheStore store.StoreInterface) (io.ReaderAt, error) {
 	size := rd.Size()
-
-	// numChunk := size / chunkSize
-
-	// config := bigcache.DefaultConfig(evictionTime)
-	// config.HardMaxCacheSize = maxMemoryMB
-	// config.MaxEntriesInWindow = int(numChunk)
-	// config.MaxEntrySize = int(chunkSize)
-	// // find closest power of 2 of maxnum
-	// config.Shards = int(math.Pow(2, math.Ceil(math.Log2(float64(maxnum)))))
-
-	// bigcacheClient, err := bigcache.NewBigCache(config)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("can't create BigCache client: %w", err)
-	// }
-
-	// bigcacheStore := store.NewBigcache(bigcacheClient, nil)
 
 	loadFunction := func(key interface{}) (interface{}, error) {
 		numChunk, ok := key.(int64)
