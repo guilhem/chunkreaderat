@@ -50,6 +50,10 @@ func NewChunkReaderAt(rd ReaderAtSizer, chunkSize int64, cacheStore store.StoreI
 
 	loadFunction := func(key interface{}) (interface{}, error) {
 		numChunk, ok := key.(int64)
+		if !ok {
+			return nil, errAssertion
+		}
+
 		offset := numChunk * chunkSize
 		buflen := chunkSize
 
@@ -58,10 +62,6 @@ func NewChunkReaderAt(rd ReaderAtSizer, chunkSize int64, cacheStore store.StoreI
 			buf = make([]byte, size%chunkSize)
 		} else {
 			buf = make([]byte, buflen)
-		}
-
-		if !ok {
-			return nil, errAssertion
 		}
 
 		n, err := rd.ReadAt(buf, offset)
