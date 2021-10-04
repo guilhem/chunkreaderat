@@ -31,7 +31,7 @@ func TestChunkReaderAt_ReadAt(t *testing.T) {
 
 	for i, tt := range tests {
 		buf := bytes.NewReader([]byte("0123456789"))
-		r, _ := chunkreaderat.NewChunkReaderAt(buf, 1, chunkreaderat.NewSimpleStore())
+		r, _ := chunkreaderat.NewChunkReaderAt(buf, 1)
 		b := make([]byte, tt.n)
 		rn, err := r.ReadAt(b, tt.off)
 		got := string(b[:rn])
@@ -78,7 +78,7 @@ func TestChunkReaderAt_ReadAtBig(t *testing.T) {
 		rand.Read(d)
 
 		buf := bytes.NewReader(d)
-		r, _ := chunkreaderat.NewChunkReaderAt(buf, tt.chunk, chunkreaderat.NewSimpleStore())
+		r, _ := chunkreaderat.NewChunkReaderAt(buf, tt.chunk)
 		b := make([]byte, tt.n)
 		_, err := r.ReadAt(b, tt.off)
 

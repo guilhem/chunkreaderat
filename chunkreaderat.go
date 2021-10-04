@@ -6,8 +6,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/eko/gocache/cache"
-	"github.com/eko/gocache/store"
+	"github.com/bluele/gcache"
 )
 
 type ReaderAtSizer interface {
@@ -16,7 +15,7 @@ type ReaderAtSizer interface {
 }
 
 type ChunkReaderAt struct {
-	cache     cache.CacheInterface
+	cache     gcache.Cache
 	chunkSize int64
 	size      int64
 }
@@ -26,7 +25,7 @@ var (
 	errNegativeOffset = errors.New("bytes.Reader.ReadAt: negative offset")
 )
 
-func NewChunkReaderAt(rd ReaderAtSizer, chunkSize int64, cacheStore store.StoreInterface) (io.ReaderAt, error) {
+func NewChunkReaderAt(rd ReaderAtSizer, chunkSize int64) (io.ReaderAt, error) {
 	size := rd.Size()
 
 	loadFunction := func(key interface{}) (interface{}, error) {
@@ -53,15 +52,13 @@ func NewChunkReaderAt(rd ReaderAtSizer, chunkSize int64, cacheStore store.StoreI
 		return buf[:n], nil
 	}
 
-	// Initialize loadable cache
-	cacheManager := cache.NewLoadable(
-		loadFunction,
-		cache.New(cacheStore),
-	)
+	gc := gcache.New(1).
+		LoaderFunc(loadFunction).
+		Build()
 
 	return &ChunkReaderAt{
 		chunkSize: chunkSize,
-		cache:     cacheManager,
+		cache:     gc,
 		size:      size,
 	}, nil
 }
