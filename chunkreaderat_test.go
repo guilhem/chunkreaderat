@@ -2,6 +2,7 @@ package chunkreaderat_test
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"math/rand"
@@ -19,19 +20,25 @@ func TestChunkReaderAt_ReadAt(t *testing.T) {
 		chunk   int64
 		memory  int
 		want    string
-		wanterr interface{}
+		wanterr error
 	}{
 		{0, 10, 1, 10, "0123456789", nil},
 		{1, 10, 1, 10, "123456789", io.EOF},
 		{1, 9, 1, 10, "123456789", nil},
 		{11, 10, 1, 10, "", io.EOF},
 		{0, 0, 1, 10, "", nil},
-		{-1, 0, 1, 10, "", "bytes.Reader.ReadAt: negative offset"},
+		{-1, 0, 1, 10, "", chunkreaderat.ErrNegativeOffset},
 	}
 
 	for i, tt := range tests {
 		buf := bytes.NewReader([]byte("0123456789"))
-		r, _ := chunkreaderat.NewChunkReaderAt(buf, 1)
+		r, err := chunkreaderat.NewChunkReaderAt(buf, 1)
+		if err != nil {
+			if !errors.Is(err, tt.wanterr) {
+				t.Errorf("%d. got error = %v; want %v", i, err, tt.wanterr)
+			}
+			return
+		}
 		b := make([]byte, tt.n)
 		rn, err := r.ReadAt(b, tt.off)
 		got := string(b[:rn])
@@ -40,7 +47,7 @@ func TestChunkReaderAt_ReadAt(t *testing.T) {
 			t.Errorf("%d. got %q; want %q", i, got, tt.want)
 		}
 
-		if fmt.Sprintf("%v", err) != fmt.Sprintf("%v", tt.wanterr) {
+		if !errors.Is(err, tt.wanterr) {
 			t.Errorf("%d. got error = %v; want %v", i, err, tt.wanterr)
 		}
 	}
@@ -57,7 +64,7 @@ func TestChunkReaderAt_ReadAtBig(t *testing.T) {
 		off     int64
 		n       int
 		chunk   int64
-		wanterr interface{}
+		wanterr error
 	}{
 		{mem100M, 0, 10, 1024, nil},
 		{mem100M, 0, 10, 1024, nil},
@@ -65,7 +72,7 @@ func TestChunkReaderAt_ReadAtBig(t *testing.T) {
 		{mem100M, 1, 9, 10, nil},
 		{mem100M, (mem100M) + 1, 10, 1024, io.EOF},
 		{mem100M, 0, 0, 1, nil},
-		{mem100M, -1, 0, 1024, "bytes.Reader.ReadAt: negative offset"},
+		{mem100M, -1, 0, 1024, chunkreaderat.ErrNegativeOffset},
 		/* #nosec */
 		{mem100M, rand.Int63n(mem100M - 100), 100, 1024, nil},
 		/* #nosec */
@@ -78,9 +85,15 @@ func TestChunkReaderAt_ReadAtBig(t *testing.T) {
 		rand.Read(d)
 
 		buf := bytes.NewReader(d)
-		r, _ := chunkreaderat.NewChunkReaderAt(buf, tt.chunk)
+		r, err := chunkreaderat.NewChunkReaderAt(buf, tt.chunk)
+		if err != nil {
+			if !errors.Is(err, tt.wanterr) {
+				t.Errorf("%d. got error = %v; want %v", i, err, tt.wanterr)
+			}
+			return
+		}
 		b := make([]byte, tt.n)
-		_, err := r.ReadAt(b, tt.off)
+		_, err = r.ReadAt(b, tt.off)
 
 		if fmt.Sprintf("%v", err) != fmt.Sprintf("%v", tt.wanterr) {
 			t.Errorf("%d. got error = %v; want %v", i, err, tt.wanterr)
