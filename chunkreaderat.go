@@ -23,9 +23,13 @@ type ChunkReaderAt struct {
 var (
 	ErrAssertion      = errors.New("assertion error")
 	ErrNegativeOffset = errors.New("bytes.Reader.ReadAt: negative offset")
+	ErrBufferSize     = errors.New("bufferSize can't be <= 0")
 )
 
-func NewChunkReaderAt(rd ReaderAtSizer, chunkSize int64) (io.ReaderAt, error) {
+func NewChunkReaderAt(rd ReaderAtSizer, chunkSize int64, bufferSize int) (io.ReaderAt, error) {
+	if bufferSize <= 0 {
+		return nil, ErrBufferSize
+	}
 	size := rd.Size()
 
 	loadFunction := func(key interface{}) (interface{}, error) {
@@ -52,8 +56,9 @@ func NewChunkReaderAt(rd ReaderAtSizer, chunkSize int64) (io.ReaderAt, error) {
 		return buf[:n], nil
 	}
 
-	gc := gcache.New(1).
+	gc := gcache.New(bufferSize).
 		LoaderFunc(loadFunction).
+		ARC().
 		Build()
 
 	return &ChunkReaderAt{
