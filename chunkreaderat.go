@@ -132,3 +132,8 @@ func (r *ChunkReaderAt) ReadAt(b []byte, offset int64) (int, error) {
 
 	return n, nil
 }
+
+// Size return size of source
+func (r *ChunkReaderAt) Size() int64 {
+	return r.size
+}
