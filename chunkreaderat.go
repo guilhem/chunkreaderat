@@ -21,8 +21,8 @@ type ChunkReaderAt struct {
 }
 
 var (
-	errAssertion      = errors.New("assertion error")
-	errNegativeOffset = errors.New("bytes.Reader.ReadAt: negative offset")
+	ErrAssertion      = errors.New("assertion error")
+	ErrNegativeOffset = errors.New("bytes.Reader.ReadAt: negative offset")
 )
 
 func NewChunkReaderAt(rd ReaderAtSizer, chunkSize int64) (io.ReaderAt, error) {
@@ -31,7 +31,7 @@ func NewChunkReaderAt(rd ReaderAtSizer, chunkSize int64) (io.ReaderAt, error) {
 	loadFunction := func(key interface{}) (interface{}, error) {
 		numChunk, ok := key.(int64)
 		if !ok {
-			return nil, errAssertion
+			return nil, ErrAssertion
 		}
 
 		offset := numChunk * chunkSize
@@ -65,7 +65,7 @@ func NewChunkReaderAt(rd ReaderAtSizer, chunkSize int64) (io.ReaderAt, error) {
 
 func (r *ChunkReaderAt) ReadAt(b []byte, offset int64) (int, error) {
 	if offset < 0 {
-		return 0, errNegativeOffset
+		return 0, ErrNegativeOffset
 	}
 
 	if offset >= r.size {
@@ -89,7 +89,7 @@ func (r *ChunkReaderAt) ReadAt(b []byte, offset int64) (int, error) {
 
 		buf, ok := bufI.([]byte)
 		if !ok {
-			return readData, errAssertion
+			return readData, ErrAssertion
 		}
 
 		n, err := bytes.NewReader(buf).ReadAt(loopb, currentOffset)
