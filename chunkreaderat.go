@@ -9,11 +9,13 @@ import (
 	"github.com/bluele/gcache"
 )
 
+// ReaderAtSizer is io.ReaderAt interface + .Size()
 type ReaderAtSizer interface {
 	io.ReaderAt
 	Size() int64
 }
 
+// ChunkReaderAt implement io.ReaderAt interface
 type ChunkReaderAt struct {
 	cache     gcache.Cache
 	chunkSize int64
@@ -26,6 +28,10 @@ var (
 	ErrBufferSize     = errors.New("bufferSize can't be <= 0")
 )
 
+// NewChunkReaderAt create a new ChunkReaderAt
+// rd is a source io.ReaderAt + a Size() function mandatory for zip manipulation.
+// chunkSize is the size of a chunk put in cache.
+// bufferSize is the number of chunk stored in cache with an ARC eviction mecanism.
 func NewChunkReaderAt(rd ReaderAtSizer, chunkSize int64, bufferSize int) (io.ReaderAt, error) {
 	if bufferSize <= 0 {
 		return nil, ErrBufferSize
