@@ -32,7 +32,7 @@ var (
 // rd is a source io.ReaderAt + a Size() function mandatory for zip manipulation.
 // chunkSize is the size of a chunk put in cache.
 // bufferSize is the number of chunk stored in cache with an ARC eviction mecanism.
-func NewChunkReaderAt(rd ReaderAtSizer, chunkSize int64, bufferSize int) (io.ReaderAt, error) {
+func NewChunkReaderAt(rd ReaderAtSizer, chunkSize int64, bufferSize int) (*ChunkReaderAt, error) {
 	if bufferSize <= 0 {
 		return nil, ErrBufferSize
 	}
