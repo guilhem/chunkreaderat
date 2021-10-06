@@ -102,3 +102,53 @@ func TestChunkReaderAt_ReadAtBig(t *testing.T) {
 		}
 	}
 }
+
+func TestChunkReaderAt_Size(t *testing.T) {
+	type fields struct {
+		chunkSize int64
+		size      int64
+	}
+	random := rand.Int63n(9999)
+	tests := []struct {
+		name   string
+		fields fields
+		want   int64
+	}{
+		{
+			name: "1",
+			fields: fields{
+				chunkSize: 1,
+				size:      1,
+			},
+			want: 1,
+		},
+		{
+			name: "1000",
+			fields: fields{
+				chunkSize: 1,
+				size:      1000,
+			},
+			want: 1000,
+		},
+		{
+			name: "random",
+			fields: fields{
+				chunkSize: 1,
+				size:      random,
+			},
+			want: random,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d := make([]byte, tt.fields.size)
+			/* #nosec */
+			rand.Read(d)
+			buf := bytes.NewReader(d)
+			r, _ := chunkreaderat.NewChunkReaderAt(buf, tt.fields.chunkSize, int(tt.fields.size))
+			if got := r.Size(); got != tt.want {
+				t.Errorf("ChunkReaderAt.Size() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
