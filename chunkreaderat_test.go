@@ -33,7 +33,7 @@ func TestChunkReaderAt_ReadAt(t *testing.T) {
 
 	for i, tt := range tests {
 		buf := bytes.NewReader([]byte("0123456789"))
-		r, err := chunkreaderat.NewChunkReaderAt(buf, tt.chunk, tt.bufferSize)
+		r, err := chunkreaderat.NewChunkReaderAt(buf, buf.Size(), tt.chunk, tt.bufferSize)
 		if err != nil {
 			if !errors.Is(err, tt.wanterr) {
 				t.Errorf("%d. got error = %v; want %v", i, err, tt.wanterr)
@@ -87,7 +87,7 @@ func TestChunkReaderAt_ReadAtBig(t *testing.T) {
 		rand.Read(d)
 
 		buf := bytes.NewReader(d)
-		r, err := chunkreaderat.NewChunkReaderAt(buf, tt.chunk, tt.bufferSize)
+		r, err := chunkreaderat.NewChunkReaderAt(buf, buf.Size(), tt.chunk, tt.bufferSize)
 		if err != nil {
 			if !errors.Is(err, tt.wanterr) {
 				t.Errorf("%d. got error = %v; want %v", i, err, tt.wanterr)
@@ -145,7 +145,7 @@ func TestChunkReaderAt_Size(t *testing.T) {
 			/* #nosec */
 			rand.Read(d)
 			buf := bytes.NewReader(d)
-			r, _ := chunkreaderat.NewChunkReaderAt(buf, tt.fields.chunkSize, int(tt.fields.size))
+			r, _ := chunkreaderat.NewChunkReaderAt(buf, buf.Size(), tt.fields.chunkSize, int(tt.fields.size))
 			if got := r.Size(); got != tt.want {
 				t.Errorf("ChunkReaderAt.Size() = %v, want %v", got, tt.want)
 			}
