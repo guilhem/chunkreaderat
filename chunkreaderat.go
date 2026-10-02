@@ -20,15 +20,20 @@ var (
 	ErrAssertion      = errors.New("assertion error")
 	ErrNegativeOffset = errors.New("bytes.Reader.ReadAt: negative offset")
 	ErrBufferSize     = errors.New("bufferSize can't be <= 0")
+	ErrChunkSize      = errors.New("chunkSize can't be <= 0")
 )
 
-// NewChunkReaderAt create a new ChunkReaderAt
-// rd is a source io.ReaderAt + a Size() function mandatory for zip manipulation.
-// chunkSize is the size of a chunk put in cache.
-// bufferSize is the number of chunk stored in cache with an ARC eviction mecanism.
+// NewChunkReaderAt caches reads from rd, whose size is supplied separately.
+// chunkSize is the maximum number of bytes in each cached chunk.
+// bufferSize is the number of chunks stored using ARC eviction.
+// Both chunkSize and bufferSize must be positive. The source must remain
+// unchanged and support concurrent ReadAt calls if the wrapper is shared.
 func NewChunkReaderAt(rd io.ReaderAt, size, chunkSize int64, bufferSize int) (*ChunkReaderAt, error) {
 	if bufferSize <= 0 {
 		return nil, ErrBufferSize
+	}
+	if chunkSize <= 0 {
+		return nil, ErrChunkSize
 	}
 
 	loadFunction := func(key interface{}) (interface{}, error) {
@@ -81,11 +86,7 @@ func (r *ChunkReaderAt) ReadAt(b []byte, offset int64) (int, error) {
 
 	readData := 0
 
-	ret := make([]byte, 0, len(b))
-
 	for currentChunk <= r.size/r.chunkSize {
-		loopb := make([]byte, len(b)-readData)
-
 		bufI, err := r.cache.Get(currentChunk)
 		if err != nil {
 			return readData, fmt.Errorf("can't get chunk %d: %w", currentChunk, err)
@@ -96,7 +97,7 @@ func (r *ChunkReaderAt) ReadAt(b []byte, offset int64) (int, error) {
 			return readData, ErrAssertion
 		}
 
-		n, err := bytes.NewReader(buf).ReadAt(loopb, currentOffset)
+		n, err := bytes.NewReader(buf).ReadAt(b[readData:], currentOffset)
 		readData += n
 
 		if err != nil && !errors.Is(err, io.EOF) {
@@ -107,8 +108,6 @@ func (r *ChunkReaderAt) ReadAt(b []byte, offset int64) (int, error) {
 			break
 		}
 
-		ret = append(ret, loopb[:n]...)
-
 		if readData == len(b) {
 			break
 		}
@@ -118,12 +117,11 @@ func (r *ChunkReaderAt) ReadAt(b []byte, offset int64) (int, error) {
 		currentOffset = 0
 	}
 
-	n := copy(b, ret[:readData])
-	if n < len(b) {
-		return n, io.EOF
+	if readData < len(b) {
+		return readData, io.EOF
 	}
 
-	return n, nil
+	return readData, nil
 }
 
 // Size return size of source
