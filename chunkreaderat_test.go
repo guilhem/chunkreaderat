@@ -3,13 +3,44 @@ package chunkreaderat_test
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"io"
 	"math/rand"
 	"testing"
 
 	"github.com/guilhem/chunkreaderat"
 )
+
+func TestInvalidChunkSize(t *testing.T) {
+	for _, size := range []int64{0, -1} {
+		if reader, err := chunkreaderat.NewChunkReaderAt(bytes.NewReader([]byte("ab")), 2, size, 1); !errors.Is(err, chunkreaderat.ErrChunkSize) || reader != nil {
+			t.Errorf("chunk size %d: got (%v, %v); want nil reader and error", size, reader, err)
+		}
+	}
+}
+
+type failingReaderAt struct {
+	err error
+}
+
+func (r failingReaderAt) ReadAt(p []byte, off int64) (int, error) {
+	if off >= 2 {
+		return 0, r.err
+	}
+	return bytes.NewReader([]byte("ab")).ReadAt(p, off)
+}
+
+func TestReadAtLaterChunkError(t *testing.T) {
+	failure := errors.New("source failed")
+	reader, err := chunkreaderat.NewChunkReaderAt(failingReaderAt{failure}, 4, 2, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	buf := make([]byte, 4)
+	n, err := reader.ReadAt(buf, 0)
+	if n != 2 || string(buf[:n]) != "ab" || !errors.Is(err, failure) {
+		t.Fatalf("ReadAt = (%d, %v), data %q; want (2, source failed), ab", n, err, buf[:n])
+	}
+}
 
 func TestChunkReaderAt_ReadAt(t *testing.T) {
 	t.Parallel()
@@ -38,7 +69,7 @@ func TestChunkReaderAt_ReadAt(t *testing.T) {
 			if !errors.Is(err, tt.wanterr) {
 				t.Errorf("%d. got error = %v; want %v", i, err, tt.wanterr)
 			}
-			return
+			continue
 		}
 		b := make([]byte, tt.n)
 		rn, err := r.ReadAt(b, tt.off)
@@ -92,12 +123,15 @@ func TestChunkReaderAt_ReadAtBig(t *testing.T) {
 			if !errors.Is(err, tt.wanterr) {
 				t.Errorf("%d. got error = %v; want %v", i, err, tt.wanterr)
 			}
-			return
+			continue
 		}
 		b := make([]byte, tt.n)
-		_, err = r.ReadAt(b, tt.off)
+		n, err := r.ReadAt(b, tt.off)
+		if n > 0 && !bytes.Equal(b[:n], d[tt.off:tt.off+int64(n)]) {
+			t.Errorf("%d. returned data differs from the source", i)
+		}
 
-		if fmt.Sprintf("%v", err) != fmt.Sprintf("%v", tt.wanterr) {
+		if !errors.Is(err, tt.wanterr) {
 			t.Errorf("%d. got error = %v; want %v", i, err, tt.wanterr)
 		}
 	}
